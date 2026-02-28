@@ -1,0 +1,92 @@
+{
+  "summary": {
+    "total_sessions": 800,
+    "total_credits_used": 1600,
+    "pass_count": 751,
+    "violation_count": 49,
+    "violation_rate_pct": 6.12,
+    "pass_rate_pct": 93.88
+  },
+  "latency": {
+    "p50_ms": 3563,
+    "p75_ms": 3859,
+    "p90_ms": 4301,
+    "p95_ms": 4605,
+    "p99_ms": 5539,
+    "min_ms": 2822,
+    "max_ms": 10007,
+    "mean_ms": 3680
+  },
+  "outcomes": {
+    "SlaPass": 751,
+    "SlaSlashProvider": 49
+  },
+  "slash": {
+    "total_shadow_units": 4812,
+    "sessions_with_slash": 49,
+    "mean_slash": 98,
+    "max_slash": 270
+  },
+  "confidence": {
+    "mean": 1.0,
+    "distribution": {
+      "clear_0.85_1.00": 800,
+      "probable_0.65_0.85": 0,
+      "ambiguous_0.00_0.65": 0
+    }
+  },
+  "worst_topics": [
+    {
+      "topic": "Meta AI Llama model performance",
+      "violation_rate": 18.2,
+      "mean_latency_ms": 3764
+    },
+    {
+      "topic": "NVIDIA AI chip demand 2025",
+      "violation_rate": 18.2,
+      "mean_latency_ms": 3906
+    },
+    {
+      "topic": "large language model inference costs",
+      "violation_rate": 17.4,
+      "mean_latency_ms": 3781
+    },
+    {
+      "topic": "inflation data consumer price index",
+      "violation_rate": 13.6,
+      "mean_latency_ms": 3787
+    },
+    {
+      "topic": "Microsoft Azure AI services growth",
+      "violation_rate": 13.6,
+      "mean_latency_ms": 3705
+    },
+    {
+      "topic": "autonomous AI systems enterprise",
+      "violation_rate": 13.0,
+      "mean_latency_ms": 3660
+    },
+    {
+      "topic": "machine learning infrastructure trends",
+      "violation_rate": 13.0,
+      "mean_latency_ms": 3779
+    },
+    {
+      "topic": "AI safety research Anthropic",
+      "violation_rate": 9.1,
+      "mean_latency_ms": 3716
+    },
+    {
+      "topic": "Google DeepMind research breakthrough",
+      "violation_rate": 9.1,
+      "mean_latency_ms": 3659
+    },
+    {
+      "topic": "Amazon AWS infrastructure spending",
+      "violation_rate": 9.1,
+      "mean_latency_ms": 3761
+    }
+  ],
+  "generated_at": "2026-02-27T23:43:09.985187+00:00",
+  "sla_target_ms": 5000
+}

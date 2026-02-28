@@ -1,0 +1,574 @@
+{
+  "provider": "serper_api",
+  "sessions": 800,
+  "window_size": 100,
+  "csi": 0.9725,
+  "components": {
+    "rf": 0.96,
+    "trf": 0.9888,
+    "ac": 1.0,
+    "ec": 0.9423
+  },
+  "violations": 4,
+  "violation_rate": 0.04,
+  "mean_latency_ms": 3520.7,
+  "mean_confidence": 1.0,
+  "mean_entropy": 0.5775,
+  "final_state": "green",
+  "transitions": 16,
+  "transition_log": [
+    {
+      "from": "green",
+      "to": "yellow",
+      "csi": 0.9384,
+      "trigger": "session_32"
+    },
+    {
+      "from": "yellow",
+      "to": "green",
+      "csi": 0.95,
+      "trigger": "session_66"
+    },
+    {
+      "from": "green",
+      "to": "yellow",
+      "csi": 0.9481,
+      "trigger": "session_73"
+    },
+    {
+      "from": "yellow",
+      "to": "green",
+      "csi": 0.9503,
+      "trigger": "session_77"
+    },
+    {
+      "from": "green",
+      "to": "yellow",
+      "csi": 0.9479,
+      "trigger": "session_82"
+    },
+    {
+      "from": "yellow",
+      "to": "green",
+      "csi": 0.9503,
+      "trigger": "session_87"
+    },
+    {
+      "from": "green",
+      "to": "yellow",
+      "csi": 0.9459,
+      "trigger": "session_108"
+    },
+    {
+      "from": "yellow",
+      "to": "green",
+      "csi": 0.9502,
+      "trigger": "session_122"
+    },
+    {
+      "from": "green",
+      "to": "yellow",
+      "csi": 0.946,
+      "trigger": "session_128"
+    },
+    {
+      "from": "yellow",
+      "to": "green",
+      "csi": 0.9501,
+      "trigger": "session_132"
+    },
+    {
+      "from": "green",
+      "to": "yellow",
+      "csi": 0.9494,
+      "trigger": "session_148"
+    },
+    {
+      "from": "yellow",
+      "to": "green",
+      "csi": 0.95,
+      "trigger": "session_189"
+    },
+    {
+      "from": "green",
+      "to": "yellow",
+      "csi": 0.9499,
+      "trigger": "session_191"
+    },
+    {
+      "from": "yellow",
+      "to": "green",
+      "csi": 0.9546,
+      "trigger": "session_204"
+    },
+    {
+      "from": "green",
+      "to": "yellow",
+      "csi": 0.9489,
+      "trigger": "session_275"
+    },
+    {
+      "from": "yellow",
+      "to": "green",
+      "csi": 0.9531,
+      "trigger": "session_342"
+    }
+  ],
+  "rolling_timeline": [
+    {
+      "session": 25,
+      "csi": 0.9571,
+      "state": "green"
+    },
+    {
+      "session": 50,
+      "csi": 0.9368,
+      "state": "yellow"
+    },
+    {
+      "session": 75,
+      "csi": 0.9492,
+      "state": "yellow"
+    },
+    {
+      "session": 100,
+      "csi": 0.9556,
+      "state": "green"
+    },
+    {
+      "session": 125,
+      "csi": 0.9501,
+      "state": "green"
+    },
+    {
+      "session": 150,
+      "csi": 0.9495,
+      "state": "yellow"
+    },
+    {
+      "session": 175,
+      "csi": 0.9497,
+      "state": "yellow"
+    },
+    {
+      "session": 200,
+      "csi": 0.9497,
+      "state": "yellow"
+    },
+    {
+      "session": 225,
+      "csi": 0.9595,
+      "state": "green"
+    },
+    {
+      "session": 250,
+      "csi": 0.9617,
+      "state": "green"
+    },
+    {
+      "session": 275,
+      "csi": 0.9489,
+      "state": "yellow"
+    },
+    {
+      "session": 300,
+      "csi": 0.9409,
+      "state": "yellow"
+    },
+    {
+      "session": 325,
+      "csi": 0.9402,
+      "state": "yellow"
+    },
+    {
+      "session": 350,
+      "csi": 0.9571,
+      "state": "green"
+    },
+    {
+      "session": 375,
+      "csi": 0.9701,
+      "state": "green"
+    },
+    {
+      "session": 400,
+      "csi": 0.9742,
+      "state": "green"
+    },
+    {
+      "session": 425,
+      "csi": 0.9789,
+      "state": "green"
+    },
+    {
+      "session": 450,
+      "csi": 0.9663,
+      "state": "green"
+    },
+    {
+      "session": 475,
+      "csi": 0.9704,
+      "state": "green"
+    },
+    {
+      "session": 500,
+      "csi": 0.9742,
+      "state": "green"
+    },
+    {
+      "session": 525,
+      "csi": 0.9699,
+      "state": "green"
+    },
+    {
+      "session": 550,
+      "csi": 0.9788,
+      "state": "green"
+    },
+    {
+      "session": 575,
+      "csi": 0.9786,
+      "state": "green"
+    },
+    {
+      "session": 600,
+      "csi": 0.9827,
+      "state": "green"
+    },
+    {
+      "session": 625,
+      "csi": 0.978,
+      "state": "green"
+    },
+    {
+      "session": 650,
+      "csi": 0.9777,
+      "state": "green"
+    },
+    {
+      "session": 675,
+      "csi": 0.9693,
+      "state": "green"
+    },
+    {
+      "session": 700,
+      "csi": 0.9653,
+      "state": "green"
+    },
+    {
+      "session": 725,
+      "csi": 0.9697,
+      "state": "green"
+    },
+    {
+      "session": 750,
+      "csi": 0.9648,
+      "state": "green"
+    },
+    {
+      "session": 775,
+      "csi": 0.9682,
+      "state": "green"
+    },
+    {
+      "session": 800,
+      "csi": 0.9725,
+      "state": "green"
+    }
+  ],
+  "state_distribution": {
+    "green": 24,
+    "yellow": 8
+  },
+  "topic_analysis": [
+    {
+      "topic": "Meta AI Llama model performance",
+      "total": 22,
+      "violations": 4,
+      "violation_rate": 0.1818,
+      "mean_latency_ms": 3764,
+      "entropy_score": 0.85
+    },
+    {
+      "topic": "NVIDIA AI chip demand 2025",
+      "total": 22,
+      "violations": 4,
+      "violation_rate": 0.1818,
+      "mean_latency_ms": 3906,
+      "entropy_score": 0.8
+    },
+    {
+      "topic": "large language model inference costs",
+      "total": 23,
+      "violations": 4,
+      "violation_rate": 0.1739,
+      "mean_latency_ms": 3781,
+      "entropy_score": 0.75
+    },
+    {
+      "topic": "inflation data consumer price index",
+      "total": 22,
+      "violations": 3,
+      "violation_rate": 0.1364,
+      "mean_latency_ms": 3787,
+      "entropy_score": 0.8
+    },
+    {
+      "topic": "Microsoft Azure AI services growth",
+      "total": 22,
+      "violations": 3,
+      "violation_rate": 0.1364,
+      "mean_latency_ms": 3705,
+      "entropy_score": 0.55
+    },
+    {
+      "topic": "autonomous AI systems enterprise",
+      "total": 23,
+      "violations": 3,
+      "violation_rate": 0.1304,
+      "mean_latency_ms": 3660,
+      "entropy_score": 0.55
+    },
+    {
+      "topic": "machine learning infrastructure trends",
+      "total": 23,
+      "violations": 3,
+      "violation_rate": 0.1304,
+      "mean_latency_ms": 3779,
+      "entropy_score": 0.5
+    },
+    {
+      "topic": "AI safety research Anthropic",
+      "total": 22,
+      "violations": 2,
+      "violation_rate": 0.0909,
+      "mean_latency_ms": 3716,
+      "entropy_score": 0.25
+    },
+    {
+      "topic": "Google DeepMind research breakthrough",
+      "total": 22,
+      "violations": 2,
+      "violation_rate": 0.0909,
+      "mean_latency_ms": 3659,
+      "entropy_score": 0.5
+    },
+    {
+      "topic": "Amazon AWS infrastructure spending",
+      "total": 22,
+      "violations": 2,
+      "violation_rate": 0.0909,
+      "mean_latency_ms": 3761,
+      "entropy_score": 0.5
+    },
+    {
+      "topic": "China AI investment policy",
+      "total": 22,
+      "violations": 2,
+      "violation_rate": 0.0909,
+      "mean_latency_ms": 3623,
+      "entropy_score": 0.6
+    },
+    {
+      "topic": "natural language processing advances",
+      "total": 22,
+      "violations": 2,
+      "violation_rate": 0.0909,
+      "mean_latency_ms": 3704,
+      "entropy_score": 0.5
+    },
+    {
+      "topic": "Federal Reserve interest rate decision",
+      "total": 22,
+      "violations": 1,
+      "violation_rate": 0.0455,
+      "mean_latency_ms": 3676,
+      "entropy_score": 0.8
+    },
+    {
+      "topic": "semiconductor stock market performance",
+      "total": 22,
+      "violations": 1,
+      "violation_rate": 0.0455,
+      "mean_latency_ms": 3722,
+      "entropy_score": 0.75
+    },
+    {
+      "topic": "venture capital AI investment 2025",
+      "total": 22,
+      "violations": 1,
+      "violation_rate": 0.0455,
+      "mean_latency_ms": 3642,
+      "entropy_score": 0.65
+    },
+    {
+      "topic": "tech IPO market conditions",
+      "total": 22,
+      "violations": 1,
+      "violation_rate": 0.0455,
+      "mean_latency_ms": 3500,
+      "entropy_score": 0.75
+    },
+    {
+      "topic": "earnings per share guidance",
+      "total": 22,
+      "violations": 1,
+      "violation_rate": 0.0455,
+      "mean_latency_ms": 3677,
+      "entropy_score": 0.85
+    },
+    {
+      "topic": "Tesla autonomous driving update",
+      "total": 22,
+      "violations": 1,
+      "violation_rate": 0.0455,
+      "mean_latency_ms": 3638,
+      "entropy_score": 0.65
+    },
+    {
+      "topic": "Apple silicon AI capabilities",
+      "total": 22,
+      "violations": 1,
+      "violation_rate": 0.0455,
+      "mean_latency_ms": 3764,
+      "entropy_score": 0.5
+    },
+    {
+      "topic": "edge AI deployment enterprise",
+      "total": 22,
+      "violations": 1,
+      "violation_rate": 0.0455,
+      "mean_latency_ms": 3671,
+      "entropy_score": 0.5
+    },
+    {
+      "topic": "AI data center power consumption",
+      "total": 22,
+      "violations": 1,
+      "violation_rate": 0.0455,
+      "mean_latency_ms": 3624,
+      "entropy_score": 0.5
+    },
+    {
+      "topic": "transformer architecture improvements",
+      "total": 22,
+      "violations": 1,
+      "violation_rate": 0.0455,
+      "mean_latency_ms": 3762,
+      "entropy_score": 0.2
+    },
+    {
+      "topic": "robotics AI integration manufacturing",
+      "total": 22,
+      "violations": 1,
+      "violation_rate": 0.0455,
+      "mean_latency_ms": 3669,
+      "entropy_score": 0.5
+    },
+    {
+      "topic": "OpenAI GPT-5 release date",
+      "total": 23,
+      "violations": 1,
+      "violation_rate": 0.0435,
+      "mean_latency_ms": 3682,
+      "entropy_score": 0.8
+    },
+    {
+      "topic": "AI agent frameworks comparison",
+      "total": 23,
+      "violations": 1,
+      "violation_rate": 0.0435,
+      "mean_latency_ms": 3641,
+      "entropy_score": 0.5
+    },
+    {
+      "topic": "AI semiconductor supply chain",
+      "total": 23,
+      "violations": 1,
+      "violation_rate": 0.0435,
+      "mean_latency_ms": 3737,
+      "entropy_score": 0.65
+    },
+    {
+      "topic": "AI regulation European Union",
+      "total": 23,
+      "violations": 1,
+      "violation_rate": 0.0435,
+      "mean_latency_ms": 3624,
+      "entropy_score": 0.3
+    },
+    {
+      "topic": "foundation model training costs",
+      "total": 23,
+      "violations": 0,
+      "violation_rate": 0.0,
+      "mean_latency_ms": 3591,
+      "entropy_score": 0.65
+    },
+    {
+      "topic": "S&P 500 earnings season outlook",
+      "total": 22,
+      "violations": 0,
+      "violation_rate": 0.0,
+      "mean_latency_ms": 3669,
+      "entropy_score": 0.85
+    },
+    {
+      "topic": "treasury yield curve inversion",
+      "total": 22,
+      "violations": 0,
+      "violation_rate": 0.0,
+      "mean_latency_ms": 3546,
+      "entropy_score": 0.7
+    },
+    {
+      "topic": "NVIDIA quarterly earnings revenue",
+      "total": 22,
+      "violations": 0,
+      "violation_rate": 0.0,
+      "mean_latency_ms": 3681,
+      "entropy_score": 0.85
+    },
+    {
+      "topic": "AMD MI300 AI accelerator",
+      "total": 22,
+      "violations": 0,
+      "violation_rate": 0.0,
+      "mean_latency_ms": 3577,
+      "entropy_score": 0.5
+    },
+    {
+      "topic": "quantum computing commercial applications",
+      "total": 22,
+      "violations": 0,
+      "violation_rate": 0.0,
+      "mean_latency_ms": 3691,
+      "entropy_score": 0.3
+    },
+    {
+      "topic": "AI drug discovery clinical trials",
+      "total": 22,
+      "violations": 0,
+      "violation_rate": 0.0,
+      "mean_latency_ms": 3621,
+      "entropy_score": 0.3
+    },
+    {
+      "topic": "autonomous vehicle regulation update",
+      "total": 22,
+      "violations": 0,
+      "violation_rate": 0.0,
+      "mean_latency_ms": 3601,
+      "entropy_score": 0.55
+    },
+    {
+      "topic": "AI cybersecurity threat detection",
+      "total": 22,
+      "violations": 0,
+      "violation_rate": 0.0,
+      "mean_latency_ms": 3635,
+      "entropy_score": 0.35
+    }
+  ],
+  "generated_at": "2026-02-28T06:56:32.911124+00:00"
+}

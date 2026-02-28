@@ -1,0 +1,17 @@
+{
+  "provider": "Serper",
+  "generated_at": "2026-02-28T01:20:30.986547+00:00",
+  "headline": "Across 800 agent sessions, Serper API violated our latency SLA in 6.12% of calls. Median latency from inside an agent workflow: 3563ms. P95: 4605ms.",
+  "key_metrics": {
+    "sessions_analyzed": 800,
+    "violation_rate": "6.12%",
+    "latency_p50_ms": 3563,
+    "latency_p95_ms": 4605,
+    "latency_p99_ms": 5539,
+    "total_shadow_slash": 4812,
+    "avg_confidence": 1.0
+  },
+  "what_this_data_is": "Latency measured from inside an autonomous agent workflow ? not from a health check or synthetic monitor. Each session represents a real task fulfillment attempt where your API was a dependency in a multi-hop coordination chain.",
+  "what_you_dont_have": "Your own dashboards show availability and status codes. They don't show latency from inside agent workflows, fault attribution across multi-hop chains, or what the economic consequence of your SLA profile is for the agents depending on you.",
+  "offer": "We can share the full evidence packet: per-session latency distributions, violation patterns by query type, and cryptographic session records. No ask. Just data."
+}
