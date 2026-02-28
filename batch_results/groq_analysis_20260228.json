@@ -1,0 +1,15 @@
+{
+  "provider": "groq_api",
+  "provider_name": "groq",
+  "sessions": 20,
+  "sla_ms": 800,
+  "csi": 0.5278,
+  "firewall_state": "red",
+  "violation_rate": 1.0,
+  "violations": 20,
+  "latency_p50": 2348,
+  "latency_p90": 2827,
+  "latency_p95": 2981,
+  "latency_p99": 3438,
+  "generated_at": "2026-02-28T12:17:08.705978+00:00"
+}

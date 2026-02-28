@@ -1,0 +1,15 @@
+{
+  "provider": "gemini_api",
+  "provider_name": "gemini",
+  "sessions": 20,
+  "sla_ms": 3000,
+  "csi": 0.5278,
+  "firewall_state": "red",
+  "violation_rate": 1.0,
+  "violations": 20,
+  "latency_p50": 4160,
+  "latency_p90": 4596,
+  "latency_p95": 4969,
+  "latency_p99": 5678,
+  "generated_at": "2026-02-28T12:21:26.255336+00:00"
+}
