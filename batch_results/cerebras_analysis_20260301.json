@@ -1,0 +1,15 @@
+{
+  "provider": "cerebras_api",
+  "provider_name": "cerebras",
+  "sessions": 800,
+  "sla_ms": 4000,
+  "csi": 0.9452,
+  "firewall_state": "yellow",
+  "violation_rate": 0.2812,
+  "violations": 225,
+  "latency_p50": 3201,
+  "latency_p90": 4124,
+  "latency_p95": 4432,
+  "latency_p99": 6632,
+  "generated_at": "2026-03-01T00:22:32.828085+00:00"
+}

@@ -1,15 +1,15 @@
 {
   "provider": "groq_api",
   "provider_name": "groq",
-  "sessions": 20,
-  "sla_ms": 800,
-  "csi": 0.5278,
+  "sessions": 800,
+  "sla_ms": 3500,
+  "csi": 0.6849,
   "firewall_state": "red",
-  "violation_rate": 1.0,
-  "violations": 20,
-  "latency_p50": 2348,
-  "latency_p90": 2827,
-  "latency_p95": 2981,
-  "latency_p99": 3438,
-  "generated_at": "2026-02-28T12:17:08.705978+00:00"
+  "violation_rate": 0.4062,
+  "violations": 325,
+  "latency_p50": 2822,
+  "latency_p90": 5457,
+  "latency_p95": 13865,
+  "latency_p99": 23870,
+  "generated_at": "2026-02-28T17:04:06.635501+00:00"
 }

@@ -4,16 +4,16 @@ legible/providers.py
 Real API call wrappers for Serper, Massive.com (formerly Polygon.io),
 and Together AI.
 
-Each wrapper is a plain function ? no Legible logic inside.
+Each wrapper is a plain function — no Legible logic inside.
 Legible wraps these via session.track_call().
 
 Setup:
     pip install httpx
 
 Environment variables:
-    SERPER_API_KEY     ? serper.dev (free: 2,500 searches/month)
-    MASSIVE_API_KEY    ? massive.com (free: 5 calls/minute)
-    TOGETHER_API_KEY   ? together.ai (requires $5 credit minimum)
+    SERPER_API_KEY     — serper.dev (free: 2,500 searches/month)
+    MASSIVE_API_KEY    — massive.com (free: 5 calls/minute)
+    TOGETHER_API_KEY   — together.ai (requires $5 credit minimum)
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ def _massive_headers() -> dict:
     return {"Authorization": f"Bearer {api_key}"}
 
 
-# ??? Serper ???????????????????????????????????????????????????????????????????
+# ─── Serper ───────────────────────────────────────────────────────────────────
 
 def serper_search(query: str, num_results: int = 5) -> dict:
     api_key = os.environ.get("SERPER_API_KEY", "")
@@ -74,7 +74,7 @@ def serper_news(query: str, num_results: int = 5) -> dict:
     return r.json()
 
 
-# ??? Massive.com (formerly Polygon.io) ???????????????????????????????????????
+# ─── Massive.com (formerly Polygon.io) ───────────────────────────────────────
 
 def massive_previous_close(symbol: str) -> dict:
     _massive_rate_limit()
@@ -114,7 +114,7 @@ def massive_aggregates(symbol: str, from_date: str,
     return r.json()
 
 
-# ??? Together AI ?????????????????????????????????????????????????????????????
+# ─── Together AI ─────────────────────────────────────────────────────────────
 
 def together_complete(prompt: str,
                       system: str = "You are a helpful assistant. Always respond with valid JSON.",
@@ -143,13 +143,13 @@ def together_extract_text(response: dict) -> str:
         return ""
 
 
-# ??? Groq ?????????????????????????????????????????????????????????????????????
+# ─── Groq ─────────────────────────────────────────────────────────────────────
 # Free tier: 14,400 requests/day, no credit card required
-# Models: llama3-8b-8192 (fastest), llama3-70b-8192, mixtral-8x7b-32768
+# Models: llama-3.1-8b-instant (fastest), llama-3.3-70b-versatile
 # Docs: console.groq.com
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_DEFAULT_MODEL = "llama3-8b-8192"   # fastest, lowest latency
+GROQ_DEFAULT_MODEL = "llama-3.1-8b-instant"  # replaces deprecated model
 
 def groq_complete(
     prompt: str,
@@ -161,8 +161,8 @@ def groq_complete(
     """
     Call Groq inference API.
     Env: GROQ_API_KEY
-    Free: 14,400 req/day ? no rate limiting needed for 800 sessions.
-    Expected latency: 200?800ms (custom LPU hardware).
+    Free: 14,400 req/day — no rate limiting needed for 800 sessions.
+    Expected latency: 200–800ms (custom LPU hardware).
     """
     api_key = os.environ.get("GROQ_API_KEY", "")
     if not api_key:
@@ -223,7 +223,7 @@ def groq_extract(topic: str) -> dict:
     )
 
 
-# ??? Google Gemini ????????????????????????????????????????????????????????????
+# ─── Google Gemini ────────────────────────────────────────────────────────────
 # Free tier: unlimited requests, rate-limited (15 RPM on flash)
 # Model: gemini-2.0-flash (fastest) or gemini-1.5-flash
 # Docs: aistudio.google.com
@@ -256,7 +256,7 @@ def gemini_complete(
     Call Google Gemini API (generateContent endpoint).
     Env: GEMINI_API_KEY
     Free: unlimited with rate limit (15 RPM for flash).
-    Expected latency: 500?2000ms.
+    Expected latency: 500–2000ms.
     """
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
@@ -305,6 +305,98 @@ def gemini_analyze(topic: str) -> dict:
 def gemini_extract(topic: str) -> dict:
     """Third call variant: key facts extraction."""
     return gemini_complete(
+        prompt=f"List 3 key facts about: {topic}. One fact per line.",
+        max_tokens=150,
+    )
+
+
+# ─── Cerebras ─────────────────────────────────────────────────────────────────
+# Free tier: 30 RPM, 14,400/day — no credit card required
+# Models: llama3.1-8b (fast, available), gpt-oss-120b (large, available)
+# Docs: cloud.cerebras.ai — OpenAI-compatible API
+# Claim: wafer-scale engine, 20x faster than GPU inference
+
+CEREBRAS_URL = "https://api.cerebras.ai/v1/chat/completions"
+CEREBRAS_DEFAULT_MODEL = "llama3.1-8b"   # confirmed available on free tier
+
+# Rate limiter: 30 RPM enforced as 1 req/sec by Cerebras — use 2.1s to be safe
+_last_cerebras_call: float = 0.0
+_CEREBRAS_MIN_INTERVAL: float = 2.1
+
+
+def _cerebras_rate_limit() -> None:
+    global _last_cerebras_call
+    elapsed = time.monotonic() - _last_cerebras_call
+    if elapsed < _CEREBRAS_MIN_INTERVAL:
+        time.sleep(_CEREBRAS_MIN_INTERVAL - elapsed)
+    _last_cerebras_call = time.monotonic()
+
+
+def cerebras_complete(
+    prompt: str,
+    system: str = "You are a helpful assistant. Be concise.",
+    model: str = CEREBRAS_DEFAULT_MODEL,
+    max_tokens: int = 256,
+    temperature: float = 0.3,
+) -> dict:
+    """
+    Call Cerebras inference API (OpenAI-compatible).
+    Env: CEREBRAS_API_KEY
+    Free: 30 RPM, 1M tokens/day — no card required.
+    Expected latency: <500ms (wafer-scale silicon claim).
+    """
+    api_key = os.environ.get("CEREBRAS_API_KEY", "")
+    if not api_key:
+        raise EnvironmentError("CEREBRAS_API_KEY not set")
+    _cerebras_rate_limit()
+    r = httpx.post(
+        CEREBRAS_URL,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user",   "content": prompt},
+            ],
+            "max_tokens":  max_tokens,
+            "temperature": temperature,
+        },
+        timeout=30.0,
+    )
+    r.raise_for_status()
+    return r.json()
+
+
+def cerebras_extract_text(response: dict) -> str:
+    try:
+        return response["choices"][0]["message"]["content"]
+    except (KeyError, IndexError):
+        return ""
+
+
+def cerebras_summarize(topic: str) -> dict:
+    """Single-call Cerebras task: summarize a topic."""
+    return cerebras_complete(
+        prompt=f"In 2-3 sentences, summarize the current state of: {topic}",
+        max_tokens=150,
+    )
+
+
+def cerebras_analyze(topic: str) -> dict:
+    """Second call variant: analysis task."""
+    return cerebras_complete(
+        prompt=f"What are the 3 most important recent developments in: {topic}? "
+               f"Reply in plain text, no markdown.",
+        max_tokens=200,
+    )
+
+
+def cerebras_extract(topic: str) -> dict:
+    """Third call variant: key facts extraction."""
+    return cerebras_complete(
         prompt=f"List 3 key facts about: {topic}. One fact per line.",
         max_tokens=150,
     )

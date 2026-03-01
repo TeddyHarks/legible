@@ -7,8 +7,8 @@ Runs sessions against Groq and Gemini (both free, no credit card).
 Produces per-provider CSI and a comparison table.
 
 SLA targets (calibrated to real-world expectations):
-    groq:   800ms   ? Groq uses custom LPU hardware, claims sub-second
-    gemini: 3000ms  ? Flash model, free tier rate-limited
+    groq:   800ms   — Groq uses custom LPU hardware, claims sub-second
+    gemini: 3000ms  — Flash model, free tier rate-limited
 
 Usage:
     python examples/multi_runner.py --provider groq --sessions 100
@@ -17,9 +17,9 @@ Usage:
     python examples/multi_runner.py --compare   # compare all providers
 
 Environment:
-    GROQ_API_KEY    ? from console.groq.com (free, no card)
-    GEMINI_API_KEY  ? from aistudio.google.com (free, no card)
-    SUBSTRALINK_KERNEL_URL ? optional, default http://127.0.0.1:3000
+    GROQ_API_KEY    — from console.groq.com (free, no card)
+    GEMINI_API_KEY  — from aistudio.google.com (free, no card)
+    SUBSTRALINK_KERNEL_URL — optional, default http://127.0.0.1:3000
 """
 
 from __future__ import annotations
@@ -47,11 +47,12 @@ from legible.evaluator import (
 from legible.providers import (
     groq_summarize, groq_analyze, groq_extract,
     gemini_summarize, gemini_analyze, gemini_extract,
+    cerebras_summarize, cerebras_analyze, cerebras_extract,
 )
 from legible.firewall import CoordinationFirewall, SessionMetrics
 
 
-# ??? Topics (same as batch_runner for comparability) ?????????????????????????
+# ─── Topics (same as batch_runner for comparability) ─────────────────────────
 
 TOPICS = [
     "NVIDIA AI chip demand 2025",
@@ -92,12 +93,12 @@ TOPICS = [
     "AI cybersecurity threat detection",
 ]
 
-# ??? Provider config ??????????????????????????????????????????????????????????
+# ─── Provider config ──────────────────────────────────────────────────────────
 
 PROVIDER_CONFIG = {
     "groq": {
         "id":       "groq_api",
-        "sla_ms":   800,       # Groq claims <1s ? hold them to it
+        "sla_ms":   2500,      # ~830ms per call x3, calibrated from real network measurements
         "calls": [
             ("summarize", groq_summarize),
             ("analyze",   groq_analyze),
@@ -117,10 +118,21 @@ PROVIDER_CONFIG = {
         "env_key":  "GEMINI_API_KEY",
         "note":     "Flash model, 15 RPM free tier",
     },
+    "cerebras": {
+        "id":       "cerebras_api",
+        "sla_ms":   1000,      # llama3.1-8b on wafer silicon — should be well under 1s per call
+        "calls": [
+            ("summarize", cerebras_summarize),
+            ("analyze",   cerebras_analyze),
+            ("extract",   cerebras_extract),
+        ],
+        "env_key":  "CEREBRAS_API_KEY",
+        "note":     "Wafer-scale engine, 30 RPM free tier, 1M tokens/day",
+    },
 }
 
 
-# ??? Kernel helpers ???????????????????????????????????????????????????????????
+# ─── Kernel helpers ───────────────────────────────────────────────────────────
 
 KERNEL_URL = os.environ.get("SUBSTRALINK_KERNEL_URL", "http://127.0.0.1:3000")
 
@@ -157,7 +169,7 @@ def kernel_resolve(did, resolver, reason):
     return r.json()
 
 
-# ??? Single session ???????????????????????????????????????????????????????????
+# ─── Single session ───────────────────────────────────────────────────────────
 
 def run_session(
     provider_name: str,
@@ -167,14 +179,15 @@ def run_session(
     use_kernel: bool = True,
     declared_var: int = 200,
     strictness: float = 1.5,
+    sla_ms_override: int = None,
 ) -> dict:
     """
     Run one session against the given provider.
-    3 calls per session ? clears MIN_CALLS_FOR_ATTRIBUTION.
+    3 calls per session — clears MIN_CALLS_FOR_ATTRIBUTION.
     """
     cfg         = PROVIDER_CONFIG[provider_name]
     provider_id = cfg["id"]
-    sla_ms      = cfg["sla_ms"]
+    sla_ms      = sla_ms_override if sla_ms_override else cfg["sla_ms"]
     call_fns    = cfg["calls"]
 
     session_id  = str(uuid.uuid4())
@@ -290,13 +303,13 @@ def run_session(
     return record
 
 
-# ??? Batch run ????????????????????????????????????????????????????????????????
+# ─── Batch run ────────────────────────────────────────────────────────────────
 
 def run_batch(provider_name: str, n_sessions: int, args):
     cfg        = PROVIDER_CONFIG[provider_name]
     env_key    = cfg["env_key"]
     provider_id = cfg["id"]
-    sla_ms     = cfg["sla_ms"]
+    sla_ms     = args.sla if (hasattr(args, "sla") and args.sla) else cfg["sla_ms"]
 
     if not os.environ.get(env_key):
         print(f"\n  {env_key} not set. Export it first:")
@@ -327,7 +340,7 @@ def run_batch(provider_name: str, n_sessions: int, args):
     # Header
     w = 62
     print(f"\n{'='*w}")
-    print(f"  Legible Multi-Provider Runner ? {provider_name.upper()}")
+    print(f"  Legible Multi-Provider Runner — {provider_name.upper()}")
     print(f"{'='*w}")
     print(f"  Provider:  {provider_id}")
     print(f"  Sessions:  {n_sessions}  ({remaining} remaining)")
@@ -351,9 +364,12 @@ def run_batch(provider_name: str, n_sessions: int, args):
             topic       = TOPICS[session_num % len(TOPICS)]
 
             try:
+                # Temporarily override cfg sla for this session
+                PROVIDER_CONFIG[provider_name]["sla_ms"] = sla_ms
                 record = run_session(
                     provider_name, topic, session_num, n_sessions,
                     use_kernel=use_kernel,
+                    sla_ms_override=sla_ms,
                 )
                 out_f.write(json.dumps(record) + "\n")
                 out_f.flush()
@@ -417,7 +433,7 @@ def run_batch(provider_name: str, n_sessions: int, args):
         return lst[int(len(lst) * p / 100)]
 
     print(f"\n{'='*w}")
-    print(f"  Complete ? {provider_name.upper()}")
+    print(f"  Complete — {provider_name.upper()}")
     print(f"{'='*w}")
     print(f"  Sessions:  {len(completed)}")
     print(f"  Errors:    {errors}")
@@ -458,7 +474,7 @@ def run_batch(provider_name: str, n_sessions: int, args):
     print(f"  Analysis saved to {analysis_file}")
 
 
-# ??? Comparison table ?????????????????????????????????????????????????????????
+# ─── Comparison table ─────────────────────────────────────────────────────────
 
 def compare_all():
     """Load all analysis files and print comparison table."""
@@ -466,7 +482,7 @@ def compare_all():
     results = []
 
     # Load provider analyses
-    for name in ["serper", "groq", "gemini", "together", "massive"]:
+    for name in ["serper", "groq", "gemini", "cerebras", "together", "massive"]:
         # find most recent
         files = sorted(out_dir.glob(f"{name}_analysis_*.json"), reverse=True)
         if not files:
@@ -513,7 +529,7 @@ def compare_all():
     print(f"{'='*w}")
     print(f"  {'Provider':<18} {'CSI':>6}  {'State':<8}  "
           f"{'ViolRate':>8}  {'p50':>7}  {'p99':>7}  {'SLA':>7}  {'N':>5}")
-    print(f"  {'?'*18} {'?'*6}  {'?'*8}  {'?'*8}  {'?'*7}  {'?'*7}  {'?'*7}  {'?'*5}")
+    print(f"  {'─'*18} {'─'*6}  {'─'*8}  {'─'*8}  {'─'*7}  {'─'*7}  {'─'*7}  {'─'*5}")
     for r in results:
         state_col = {
             "green": "GREEN ", "yellow": "YELLOW",
@@ -529,18 +545,20 @@ def compare_all():
     print(f"{'='*w}\n")
 
 
-# ??? Main ?????????????????????????????????????????????????????????????????????
+# ─── Main ─────────────────────────────────────────────────────────────────────
 
 import random
 
 def main():
     parser = argparse.ArgumentParser(description="Legible Multi-Provider Runner")
-    parser.add_argument("--provider", choices=["groq", "gemini"],
+    parser.add_argument("--provider", choices=["groq", "gemini", "cerebras"],
                         help="Which provider to run")
     parser.add_argument("--sessions", type=int, default=100,
                         help="Number of sessions (default: 100)")
     parser.add_argument("--compare", action="store_true",
                         help="Print comparison table of all providers")
+    parser.add_argument("--sla", type=int, default=None,
+                        help="Override SLA target in ms (e.g. --sla 2500)")
     args = parser.parse_args()
 
     if args.compare:
