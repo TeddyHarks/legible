@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 examples/gateway_replay.py
 
@@ -9,13 +10,14 @@ Usage:
     python examples/gateway_replay.py --mode safe --escalation
     python examples/gateway_replay.py --mode safe --escalation --cost-model --impact
     python examples/gateway_replay.py --mode safe --escalation --cost-model --impact --escalation-budget 0.05
-    python examples/gateway_replay.py --mode safe --escalation --cost-model --impact --escalation-budget 0.10
-    python examples/gateway_replay.py --mode safe --escalation --cost-model --impact --escalation-budget 0.15
+    python examples/gateway_replay.py --mode safe --escalation --cost-model --impact --shadow-warm 0.10 --shadow-warm-until 200
+    python examples/gateway_replay.py --mode safe --escalation --cost-model --impact --shadow-warm 0.10 --shadow-warm-until 200 --collapse Serper --collapse-at 50
 """
 from __future__ import annotations
 
 import argparse
 import json
+import random
 import re
 import sys
 from collections import defaultdict
@@ -283,22 +285,25 @@ def main():
                         help="Track and report cost economics")
     parser.add_argument("--impact",     action="store_true",
                         help="Enable impact-weighted reliability metrics")
-    # ── NEW: Budget Governor ──────────────────────────────────────────────────
+    # ── Budget Governor ──────────────────────────────────────────────────
     parser.add_argument("--escalation-budget", type=float, default=None, metavar="FRACTION",
                         help="Max cost overhead vs static baseline (e.g. 0.10 = 10%% cap). "
                              "Blocks escalation once budget is exhausted.")
+    # ── Collapse simulation ─────────────────────────────────────────────
     parser.add_argument("--collapse-at", type=int, default=None, metavar="SESSION",
                         help="Simulate a provider collapsing at a specific session number "
                              "(e.g. --collapse Serper --collapse-at 100). "
                              "Engine keeps CSI history up to that point, then provider is removed.")
     parser.add_argument("--collapse", default=None, metavar="PROVIDER",
                         help="Provider to collapse at --collapse-at session (e.g. Serper).")
+    # ── Degraded mode strategy ───────────────────────────────────────────
     parser.add_argument("--degraded-strategy", default="normal",
                         choices=["normal", "survival", "survival_v2"],
                         help="Routing strategy after provider collapse. "
                              "survival: deterministic impact-aware routing, "
                              "tightened escalation (HIGH only + CSI margin), "
                              "no probabilistic exploration.")
+    # ── Traffic shaping ──────────────────────────────────────────────────
     parser.add_argument("--provider-cap", type=float, default=None, metavar="FRACTION",
                         help="Max traffic share per provider (e.g. 0.65 = 65%% cap). "
                              "Forces diversification even when one provider dominates.")
@@ -306,6 +311,7 @@ def main():
                         help="Min traffic share per active provider (e.g. 0.05 = 5%% floor). "
                              "Keeps backup providers warm even when primary dominates. "
                              "Applied before the cap check.")
+    # ── Escalation gate ──────────────────────────────────────────────────
     parser.add_argument("--escalation-gate", default="none",
                         choices=["none", "impact", "entropy", "both"],
                         help="Gate escalation by topic signal: "
@@ -313,6 +319,12 @@ def main():
                              "impact=only medium/high topics, "
                              "entropy=only high-entropy topics (>=0.65), "
                              "both=must pass both gates.")
+    # ── Shadow warm (learning acceleration) ──────────────────────────────
+    parser.add_argument("--shadow-warm", type=float, default=None, metavar="FRACTION",
+                        help="Fraction of pre-collapse sessions that trigger parallel evaluation "
+                             "of all providers (learning only, not routing).")
+    parser.add_argument("--shadow-warm-until", type=int, default=None, metavar="SESSION",
+                        help="Last session where shadow warm applies (e.g., 200).")
     args = parser.parse_args()
 
     batch_dir = Path(args.batch_dir)
@@ -339,12 +351,7 @@ def main():
     n = min(len(v) for v in all_sessions.values())
 
     # ── Budget limit: total cost units allowed over the whole replay ───────────
-    # baseline = n × 1.0 (Serper cost per session)
-    import random as _random
-    _rng = _random.Random(42)
     baseline_cost           = n * COST_WEIGHTS["Serper"]
-    # Budget caps backup-call spend only (not routing overhead).
-    # e.g. 0.05 → max 40 extra units for backup calls on 800-session baseline.
     escalation_budget_units = (baseline_cost * args.escalation_budget
                                if args.escalation_budget is not None else None)
 
@@ -364,6 +371,8 @@ def main():
             tags += f" [gate={args.escalation_gate}]"
         if args.escalation_budget is not None:
             tags += f" [budget={args.escalation_budget*100:.0f}%]"
+    if args.shadow_warm is not None and args.shadow_warm_until is not None:
+        tags += f" [shadow={args.shadow_warm*100:.0f}% until {args.shadow_warm_until}]"
     if args.cost_model:
         tags += " + cost-model"
     if args.impact:
@@ -375,6 +384,8 @@ def main():
         print(f"  Budget:  {args.escalation_budget*100:.0f}% cap on escalation cost  "
               f"= {escalation_budget_units:.1f} backup-call units allowed  "
               f"(baseline={baseline_cost:.1f})")
+    if args.shadow_warm is not None and args.shadow_warm_until is not None:
+        print(f"  Shadow:  {args.shadow_warm*100:.0f}% parallel learning until session {args.shadow_warm_until}")
     print()
 
     engine = CoordinationEngine(
@@ -414,14 +425,14 @@ def main():
     pre_collapse_csi   = None
     degraded_mode      = False
 
+    # ── Shadow warm RNG ───────────────────────────────────────────────────────
+    rng = random.Random(42)   # deterministic but adjustable
+
     # ── Replay loop ────────────────────────────────────────────────────────────
     for i in range(n):
         topic       = all_sessions["Serper"][i]["topic"]
 
         # ── Mid-run collapse ───────────────────────────────────────────────────────
-        # At the specified session, remove the provider from active routing.
-        # The engine keeps its CSI history (lagging indicator stays), but the
-        # provider is no longer eligible for selection or escalation.
         if (collapse_provider and collapse_at is not None
                 and i == collapse_at and not collapse_triggered):
             collapse_triggered = True
@@ -440,10 +451,10 @@ def main():
                 print(f"     Active providers: {active}")
                 print()
 
+        # ── Routing decision ───────────────────────────────────────────────────
         recommended, _, _, _ = engine.recommend(topic=topic)
 
         # If the recommended provider has collapsed, pick the next best from active list.
-        # The engine doesn't know about mid-run collapse, so we enforce it here.
         if collapse_triggered and recommended not in active:
             status_now    = engine.status()
             alternatives  = sorted(
@@ -458,22 +469,19 @@ def main():
             status_now    = engine.status()
             provider_csis = {name: d["csi"] for name, d in status_now["providers"].items()}
             if args.degraded_strategy == "survival_v2":
-                recommended = survival_v2_route(topic, provider_csis, active, _rng)
+                recommended = survival_v2_route(topic, provider_csis, active, rng)
             else:
                 recommended = survival_route(topic, provider_csis, active)
 
         # Provider floor: if any active provider is below its minimum share,
         # route this session to the most-starved provider instead.
-        # This keeps backup providers warm so CSI models stay accurate.
         if args.provider_floor is not None and total > 0:
-            # Find the provider furthest below its floor (most starved)
             starved = [
                 (args.provider_floor - routing_traffic.get(name, 0) / total, name)
                 for name in active
                 if routing_traffic.get(name, 0) / total < args.provider_floor
             ]
             if starved:
-                # Route to the most-starved provider (largest deficit)
                 starved.sort(reverse=True)
                 recommended = starved[0][1]
 
@@ -484,7 +492,6 @@ def main():
                 share = routing_traffic.get(recommended, 0) / total
                 if share < args.provider_cap:
                     break
-                # Pick next best provider not over cap
                 status_now = engine.status()
                 alts = sorted(
                     [(d["csi"], name) for name, d in status_now["providers"].items()
@@ -495,18 +502,47 @@ def main():
                 if alts:
                     recommended = alts[0][1]
                 else:
-                    break  # all providers at cap, keep original
+                    break
 
-        for name, data in all_sessions.items():
-            s = data[i]
-            engine.report_session(
-                provider=name, violation=s["violation"], latency_ms=s["latency_ms"],
-                latency_p99_ms=s["latency_p99_ms"], sla_ms=s["sla_ms"],
-                confidence=s["confidence"], entropy=s["entropy"],
-                topic=s["topic"], session_id=s["session_id"],
-            )
+        # ── Session snapshot for this index ─────────────────────────────────────
+        session_snap = {name: all_sessions[name][i] for name in all_sessions}
 
-        session_snap     = {name: all_sessions[name][i] for name in all_sessions}
+        # ── First, report the outcome of the provider that will be used (real call) ──
+        # This is the only report that should affect routing in normal operation.
+        # (We'll handle shadow warm separately.)
+        s_real = session_snap[recommended]
+        engine.report_session(
+            provider=recommended,
+            violation=s_real["violation"],
+            latency_ms=s_real["latency_ms"],
+            latency_p99_ms=s_real["latency_p99_ms"],
+            sla_ms=s_real["sla_ms"],
+            confidence=s_real["confidence"],
+            entropy=s_real["entropy"],
+            topic=s_real["topic"],
+            session_id=s_real["session_id"],
+        )
+
+        # ── Shadow warm: for sessions before the cutoff, with given probability,
+        #     report the outcomes of *all* providers (simulating parallel calls).
+        if args.shadow_warm is not None and args.shadow_warm_until is not None:
+            if i < args.shadow_warm_until and rng.random() < args.shadow_warm:
+                for name, s in session_snap.items():
+                    if name == recommended:
+                        continue   # already reported above; avoid double counting
+                    engine.report_session(
+                        provider=name,
+                        violation=s["violation"],
+                        latency_ms=s["latency_ms"],
+                        latency_p99_ms=s["latency_p99_ms"],
+                        sla_ms=s["sla_ms"],
+                        confidence=s["confidence"],
+                        entropy=s["entropy"],
+                        topic=s["topic"],
+                        session_id=s["session_id"],
+                    )
+
+        # ── Determine the actual violation of the recommended provider ───────────
         actual_violation = all_sessions["Serper"][i]["violation"]
 
         # ── Routing + Escalation ───────────────────────────────────────────────
@@ -521,7 +557,6 @@ def main():
                 and session_snap[recommended]["violation"]
             )
 
-            # ── BUDGET GATE ────────────────────────────────────────────────────
             # Survival v2 escalation gate
             if would_escalate and degraded_mode and args.degraded_strategy == "survival_v2":
                 p2_csi = provider_csis.get(recommended, 0.0)
@@ -536,7 +571,7 @@ def main():
                     would_escalate    = False
                     escalations_gated += 1
 
-            # Survival v1 escalation gate: in degraded mode, only HIGH impact gets backup.
+            # Survival v1 escalation gate
             if would_escalate and degraded_mode and args.degraded_strategy == "survival":
                 p_csi = provider_csis.get(recommended, 0.0)
                 best_backup_name = next(
@@ -559,7 +594,6 @@ def main():
                     escalations_gated += 1
 
             # Budget gate: check escalation_cost (backup calls only) vs budget.
-            # Routing overhead is excluded — budget governs insurance spend only.
             budget_allows = True
             if would_escalate and escalation_budget_units is not None:
                 best_backup = next(
@@ -584,7 +618,6 @@ def main():
                 if backup_calls > 0 and not rec_violated:
                     escalation_saves += 1
             else:
-                # No escalation — either not needed or budget exhausted
                 rec_violated     = session_snap[recommended]["violation"]
                 final_provider   = recommended
                 providers_called = [recommended]
@@ -628,9 +661,10 @@ def main():
             cost_pct = (total_shadow_cost / total_static_cost - 1) * 100
             cost_str = f"  cost={cost_pct:+.1f}%" if args.cost_model else ""
             blk_str  = f"  blocked={escalations_blocked}" if args.escalation_budget is not None else ""
+            gated_str = f"  gated={escalations_gated}" if args.escalation_gate != "none" else ""
             print(f"  Session {i+1:>4}/{n}  "
                   f"shadow={sv_pct:.1f}%  actual={av_pct:.1f}%  "
-                  f"agree={agreed/total*100:.0f}%{cost_str}{blk_str}")
+                  f"agree={agreed/total*100:.0f}%{cost_str}{blk_str}{gated_str}")
             for name, d in sorted(status["providers"].items(),
                                   key=lambda x: x[1]["csi"], reverse=True):
                 tag = " [EXCLUDED]" if name in excluded else ""
