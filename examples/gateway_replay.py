@@ -319,12 +319,6 @@ def main():
                              "impact=only medium/high topics, "
                              "entropy=only high-entropy topics (>=0.65), "
                              "both=must pass both gates.")
-    # ── Shadow warm (learning acceleration) ──────────────────────────────
-    parser.add_argument("--shadow-warm", type=float, default=None, metavar="FRACTION",
-                        help="Fraction of pre-collapse sessions that trigger parallel evaluation "
-                             "of all providers (learning only, not routing).")
-    parser.add_argument("--shadow-warm-until", type=int, default=None, metavar="SESSION",
-                        help="Last session where shadow warm applies (e.g., 200).")
     args = parser.parse_args()
 
     batch_dir = Path(args.batch_dir)
@@ -363,6 +357,8 @@ def main():
         tags += f" [cap={args.provider_cap*100:.0f}%]"
     if args.collapse and args.collapse_at is not None:
         tags += f" [collapse={args.collapse}@{args.collapse_at}]"
+    if args.shadow_warm > 0 and args.shadow_warm_until > 0:
+        tags += f" [shadow-warm={args.shadow_warm*100:.0f}%@{args.shadow_warm_until}]"
     if args.degraded_strategy != 'normal':
         tags += f" [degraded={args.degraded_strategy}]"
     if args.escalation:
@@ -411,6 +407,8 @@ def main():
     total_shadow_cost = 0.0
     total_static_cost = 0.0
     escalation_cost   = 0.0
+    shadow_warm_cost  = 0.0
+    shadow_warm_calls = 0
 
     # Impact
     weighted_shadow_v = 0.0
@@ -502,47 +500,18 @@ def main():
                 if alts:
                     recommended = alts[0][1]
                 else:
-                    break
+                    break  # all providers at cap, keep original
 
-        # ── Session snapshot for this index ─────────────────────────────────────
-        session_snap = {name: all_sessions[name][i] for name in all_sessions}
+        for name, data in all_sessions.items():
+            s = data[i]
+            engine.report_session(
+                provider=name, violation=s["violation"], latency_ms=s["latency_ms"],
+                latency_p99_ms=s["latency_p99_ms"], sla_ms=s["sla_ms"],
+                confidence=s["confidence"], entropy=s["entropy"],
+                topic=s["topic"], session_id=s["session_id"],
+            )
 
-        # ── First, report the outcome of the provider that will be used (real call) ──
-        # This is the only report that should affect routing in normal operation.
-        # (We'll handle shadow warm separately.)
-        s_real = session_snap[recommended]
-        engine.report_session(
-            provider=recommended,
-            violation=s_real["violation"],
-            latency_ms=s_real["latency_ms"],
-            latency_p99_ms=s_real["latency_p99_ms"],
-            sla_ms=s_real["sla_ms"],
-            confidence=s_real["confidence"],
-            entropy=s_real["entropy"],
-            topic=s_real["topic"],
-            session_id=s_real["session_id"],
-        )
-
-        # ── Shadow warm: for sessions before the cutoff, with given probability,
-        #     report the outcomes of *all* providers (simulating parallel calls).
-        if args.shadow_warm is not None and args.shadow_warm_until is not None:
-            if i < args.shadow_warm_until and rng.random() < args.shadow_warm:
-                for name, s in session_snap.items():
-                    if name == recommended:
-                        continue   # already reported above; avoid double counting
-                    engine.report_session(
-                        provider=name,
-                        violation=s["violation"],
-                        latency_ms=s["latency_ms"],
-                        latency_p99_ms=s["latency_p99_ms"],
-                        sla_ms=s["sla_ms"],
-                        confidence=s["confidence"],
-                        entropy=s["entropy"],
-                        topic=s["topic"],
-                        session_id=s["session_id"],
-                    )
-
-        # ── Determine the actual violation of the recommended provider ───────────
+        session_snap     = {name: all_sessions[name][i] for name in all_sessions}
         actual_violation = all_sessions["Serper"][i]["violation"]
 
         # ── Routing + Escalation ───────────────────────────────────────────────
@@ -631,6 +600,41 @@ def main():
             providers_called = [recommended]
             routing_traffic[recommended] += 1
             session_cost = COST_WEIGHTS.get(recommended, DEFAULT_COST)
+
+        # ── Shadow warm (observational learning only) ───────────────────────
+        shadow_called = []
+        if (
+            args.shadow_warm > 0
+            and args.shadow_warm_until > 0
+            and (i + 1) <= args.shadow_warm_until
+        ):
+            for provider_name in active:
+                if provider_name in providers_called:
+                    continue
+                if _rng.random() < args.shadow_warm:
+                    shadow_called.append(provider_name)
+
+        if args.shadow_warm > 0 and args.shadow_warm_until > 0:
+            learned_providers = list(dict.fromkeys(providers_called + shadow_called))
+        else:
+            # Preserve legacy replay semantics when shadow warm is disabled:
+            # every provider receives observational updates each session.
+            learned_providers = list(all_sessions.keys())
+
+        for name in learned_providers:
+            s = all_sessions[name][i]
+            engine.report_session(
+                provider=name, violation=s["violation"], latency_ms=s["latency_ms"],
+                latency_p99_ms=s["latency_p99_ms"], sla_ms=s["sla_ms"],
+                confidence=s["confidence"], entropy=s["entropy"],
+                topic=s["topic"], session_id=s["session_id"],
+            )
+
+        if shadow_called:
+            shadow_warm_calls += len(shadow_called)
+            extra_shadow_cost = sum(COST_WEIGHTS.get(p, DEFAULT_COST) for p in shadow_called)
+            shadow_warm_cost += extra_shadow_cost
+            session_cost += extra_shadow_cost
 
         # ── Accumulate ────────────────────────────────────────────────────────
         shadow_violations += int(rec_violated)
@@ -766,6 +770,9 @@ def main():
         print(f"  Cost overhead:             {cost_overhead:+.2f}%  "
               f"({escalation_cost:.1f} units from backup calls)")
         print(f"  Avg cost per session:      {total_shadow_cost/total:.4f}  (static: 1.0000)")
+        if shadow_warm_calls > 0:
+            print(f"  Shadow warm calls:         {shadow_warm_calls}  ({shadow_warm_calls/total:.2f} per session)")
+            print(f"  Shadow warm extra cost:    {shadow_warm_cost:.1f}")
         print()
         print(f"  ── Efficiency {'─'*(W-17)}")
         if violations_prevented > 0:
